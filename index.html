@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-hant-tw" !class="is-dark">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="./lib/tocas/tocas.min.css">
+  <link rel="stylesheet" href="./css/main.css">
+  <script src="./lib/tocas/tocas.min.js"></script>
+  <script src="./lib/moment.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/howler/howler.min.js"></script>
+
+  <title>電子朱桃桃</title>
+</head>
+
+<body>
+  <div id="petbox" class="ts-container is-very-narrow" :class="[!gameStart?'ts-center':'']">
+    <div class="ts-loading loading-box" :class="loadnone"></div>
+    <div :class="[gameStart?'ts-space':'']"> </div>
+    <div class="ts-center is-center-aligned" v-show="!gameStart">
+      <div class="ts-header is-large is-heavy is-icon">電子朱桃桃</div>
+      <div class="ts-space is-large"></div>
+      <div class="ts-segment" style="width: 260px">
+        <div class="ts-wrap is-vertical is-center-aligned">
+          <div class="ts-text is-label">請輸入名字</div>
+          <div class="ts-input is-underlined is-fluid">
+            <input style="text-align: center;" maxlength="10" type="text" v-model="pet.name"
+              v-on:keyup.enter="startGame" />
+          </div>
+          <button class="ts-button is-fluid is-accent" v-show="haveSave" v-on:click="continueGame">繼續遊戲</button>
+          <button class="ts-button is-fluid is-accent" :class="[pet.name==''?'is-disabled':'']"
+            v-on:click="startGame">開始遊戲</button>
+          <button class="ts-button is-fluid is-accent" v-on:click="notionModel = !notionModel"> 遊戲說明 </button>
+          <button class="ts-button is-fluid is-accent" v-on:click="devModel = !devModel"> 開發日誌 </button>
+        </div>
+      </div>
+      <copyright></copyright>
+    </div>
+    <div :class="startload"></div>
+    <div v-show="gameStart">
+      <div class="ts-segment is-center-aligned">
+        <div class="clock">
+          <div class="ts-text is-description">{{clock.format('MM.DD ddd')}}</div>
+          <div class="ts-text is-description">{{clock.format('HH:mm:')}}<span class="ts-text is-description"
+              id="sec">{{clock.format('ss')}}</span>
+          </div>
+        </div>
+        <div class="game-time">
+          <div class="ts-text is-description">本次遊戲時間</div>
+          <div class="ts-text is-description">{{ gmTime.showGameTime }}</div>
+        </div>
+        <div class="ts-header title-name is-large is-heavy is-icon">
+          {{ pet.name }}
+        </div>
+        <div class="mobile-:ts-space"></div>
+        <div class="ts-image">
+          <img :src="petimg">
+          <span class="ts-text is-description">{{pet.stage}}</span>
+        </div>
+        <div class="ts-space"></div>
+        <div class="ts-wrap is-vertical">
+          <div class="ts-wrap is-center-aligned is-middle-aligned">
+            <div class="ts-wrap is-middle-aligned">
+              <div class="ts-text">生命</div>
+              <div class="ts-gauge">
+                <div class="bar is-accent" :style="{ '--value': normalizedPet.health }">
+                  <div class="text"> {{normalizedPet.health}}% </div>
+                </div>
+              </div>
+            </div>
+            <div class="ts-wrap is-middle-aligned">
+              <div class="ts-text">心情</div>
+              <div class="ts-gauge">
+                <div class="bar is-accent" :style="{ '--value': normalizedPet.happiness }">
+                  <div class="text"> {{normalizedPet.happiness}}% </div>
+                </div>
+              </div>
+            </div>
+            <div class="ts-wrap is-middle-aligned">
+              <div class="ts-text">飽食</div>
+              <div class="ts-gauge">
+                <div class="bar is-accent" :style="{ '--value': normalizedPet.hunger }">
+                  <div class="text"> {{normalizedPet.hunger}}% </div>
+                </div>
+              </div>
+            </div>
+            <div class="ts-wrap is-middle-aligned">
+              <div class="ts-text">環境</div>
+              <div class="ts-gauge">
+                <div class="bar is-accent" :style="{ '--value': normalizedPet.milieu }">
+                  <div class="text"> {{normalizedPet.milieu}}% </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ts-wrap is-middle-aligned is-evenly-divided tablet+:w-100"
+            style="justify-content: space-between;">
+            <div class="ts-box mobile-:w-100 tablet+:w-30">
+              <div class="ts-text is-description">狀態</div>
+              <div class="ts-divider"></div>
+              <div class="ts-wrap is-compact is-center-aligned" style="padding: .4rem;">
+                <div class="ts-chip" :class="val.class" v-for="val in patStatus" v-if="val.active"> {{ val.name }}
+                </div>
+              </div>
+            </div>
+            <div class="ts-box mobile-:w-100 tablet+:w-30">
+              <div class="ts-text is-description">年齡</div>
+              <div class="ts-divider"></div>
+              <div class="ts-text">{{pet.age}}</div>
+            </div>
+            <div class="ts-box mobile-:w-100 tablet+:w-30">
+              <div class="ts-text is-description">體重</div>
+              <div class="ts-divider"></div>
+              <div class="ts-text">{{ parseFloat(pet.weight.toFixed(2)) }}</div>
+            </div>
+          </div>
+          <div class="ts-box">
+            <div class="ts-wrap is-center-aligned">
+              <div class="ts-text is-description">動態</div>
+              <div class="ts-text is-description"> {{activeMsg}} </div>
+            </div>
+            <div class="ts-divider"></div>
+            <div class="ts-app-layout is-horizontal mobile-:is-vertical">
+              <div class="cell">
+                <div class="ts-content">
+                  <div class="ts-wrap is-vertical is-compact">
+                    <span class="ts-text is-label">選擇餵食物品</span>
+                    <div class="ts-select is-underlined is-small">
+                      <select v-model="foodSelect">
+                        <option v-for="list in foodlists" :value="list.id">{{list.name}}</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="cell is-fluid is-vertical" style="justify-content: center;">
+                <div class="ts-content">
+                  <div class="ts-wrap is-center-aligned is-middle-aligned">
+                    <button class="ts-button is-accent"
+                      :class="[pet.isAlive?'':'is-disabled', stopTime?'is-disabled':'']"
+                      v-on:click="giveFood">餵食</button>
+                    <button class="ts-button is-accent"
+                      :class="[pet.isAlive?'':'is-disabled', stopTime?'is-disabled':'']"
+                      v-on:click="playGame">遊戲</button>
+                    <button class="ts-button is-accent"
+                      :class="[pet.isAlive?'':'is-disabled', stopTime?'is-disabled':'']"
+                      v-on:click="clearRoom">清潔</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ts-space"></div>
+      <div class="ts-wrap is-middle-aligned mobole-:is-center-aligned mobole-:is-just-center tablet+:is-just-between">
+        <div class="ts-text">
+          <span>死亡 {{ pet.dieNum }}</span>
+          <span>逃跑 {{ pet.runNum }}</span>
+        </div>
+        <div>
+          <button class="ts-button is-accent" v-on:click="saveGameData"> 保存遊戲 </button>
+          <button class="ts-button is-accent" v-on:click="notionModel = !notionModel"> 遊戲說明 </button>
+          <button class="ts-button is-accent" v-on:click="devModel = !devModel"> 開發日誌 </button>
+        </div>
+      </div>
+      <div class="ts-space"></div>
+
+      <fieldset class="ts-fieldset">
+        <legend>遊戲設定</legend>
+        <div class="ts-row is-evenly-divided mobile-:is-compact">
+          <div class="column">
+            <fieldset class="ts-fieldset">
+              <legend>開關設定</legend>
+              <div class="ts-wrap tablet+:is-middle-aligned tablet+:is-center-aligned">
+                <label class="ts-switch" :class="[pet.isAlive?'':'is-disabled']">
+                  <input class="is-accent" type="checkbox" v-model="stopTime" />
+                  時間暫停
+                </label>
+                <label class="ts-switch">
+                  <input class="is-accent" type="checkbox" v-model="userSetting.autoSave" />
+                  自動存檔
+                </label>
+                <label class="ts-switch">
+                  <input class="is-accent" type="checkbox" v-model="userSetting.autoStop" />
+                  自動暫停
+                </label>
+                <label class="ts-switch">
+                  <input class="is-accent" type="checkbox" v-model="userSetting.skipSwitch" />
+                  跳過動畫
+                </label>
+                <label class="ts-switch">
+                  <input class="is-accent" type="checkbox" v-model="userSetting.isNotNotify" />
+                  關閉通知
+                </label>
+                <label class="ts-switch">
+                  <input class="is-accent" type="checkbox" v-model="canParSet" />
+                  隱藏選項
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <parameter-setting v-show="canParSet" :pet="pet" :stop-time="stopTime" :time-Ctrl="timeCtrl"
+            :save-Ing="saveIng">
+          </parameter-setting>
+        </div>
+        <div class="ts-wrap is-just-between" style="margin-top: .4rem;">
+          <button class="ts-button is-negative is-outlined" v-on:click="resetGame">重新開始</button>
+        </div>
+        <copyright></copyright>
+      </fieldset>
+    </div>
+
+    <div class="ts-modal is-small" :class="[openModel?'is-visible':'']">
+      <div class="content">
+        <div class="close-btn">
+          <button class="ts-close is-big is-accent" v-on:click="closeModel"></button>
+        </div>
+        <div class="ts-content is-center-aligned is-vertically-padded" style="padding-top: 0;">
+          <div class="ts-header is-icon">
+            <div class="ts-image">
+              <img :src="petActiveImg" alt="">
+            </div>
+          </div>
+          <div class="ts-space"></div>
+          <div class="ts-text"> {{ activeMsg }} </div>
+        </div>
+        <div class="ts-divider"></div>
+      </div>
+    </div>
+
+    <div class="ts-modal" :class="[notionModel?'is-visible':'']">
+      <div class="content">
+        <div class="close-btn">
+          <button class=" ts-close is-big is-accent" v-on:click="notionModel = !notionModel"></button>
+        </div>
+        <div class="ts-content is-vertically-padded" style="padding-top: 0;">
+          <fieldset class="ts-fieldset">
+            <legend>遊戲說明</legend>
+            <div class="ts-list is-unordered">
+              <div class="item">你的寵物是很脆弱的，請小心呵護</div>
+              <div class="item">左下角的到計時歸零，將會飼養失敗</div>
+              <div class="item">心情太差或是餓過頭會離家出走</div>
+              <div class="item">吃太胖會影響健康</div>
+              <div class="item">餵食可以增加飽食度，但吃過頭會有反效果</div>
+              <div class="item">太胖的話就玩點遊戲來運動吧</div>
+              <div class="item">環境太髒亂就需要努力打掃</div>
+            </div>
+            <div class="ts-divider"></div>
+            <div class="precautions">
+              <div class="item">如果通知失效，請確認是否有允許通知權限</div>
+              <div v-show="!canNotify" class="item" style="color:var(--ts-negative-400);">未偵測到通知權限</div>
+              <div v-show="canNotify" class="item" style="color:var(--ts-positive-400);">已偵測到通知權限</div>
+            </div>
+          </fieldset>
+        </div>
+        <div class="ts-divider"></div>
+        <div class="ts-content is-tertiary">
+          <button class="ts-button is-fluid is-accent" v-on:click="notionModel = !notionModel">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ts-modal" :class="[saveIng?'is-visible':'']">
+      <div class="content">
+        <div class="close-btn">
+          <button class="ts-close is-big is-accent" v-on:click="saveIng = !saveIng"></button>
+        </div>
+        <div class="ts-content is-vertically-padded" style="text-align: center; padding-top: 0;">
+          保存中
+        </div>
+      </div>
+    </div>
+
+    <div class="ts-modal" :class="[devModel?'is-visible':'']">
+      <div class="content">
+        <div class="close-btn">
+          <button class=" ts-close is-big is-accent" v-on:click="devModel = !devModel"></button>
+        </div>
+        <div class="ts-content is-vertically-padded" style="padding-top: 0;">
+          <fieldset class="ts-fieldset">
+            <legend>開發日誌</legend>
+            <div class="ts-list is-unordered">
+              <div class="item">2023/03/31 新增存檔功能</div>
+              <div class="item">2023/03/30 新增設定功能</div>
+              <div class="item">2023/03/29 新增通知功能</div>
+              <div class="item">2023/03/28 圖片更新</div>
+              <div class="item">2023/03/27 beta 1.0</div>
+            </div>    
+          </fieldset>
+        </div>
+        <div class="ts-divider"></div>
+        <div class="ts-content is-tertiary">
+          <button class="ts-button is-fluid is-accent" v-on:click="devModel = !devModel">關閉</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./js/userSetting.js"></script>
+  <script src="./js/copyright.js"></script>
+  <script src="./js/main.js"></script>
+</body>
+
+</html>
